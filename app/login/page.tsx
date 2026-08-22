@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
@@ -20,13 +21,46 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      // Firebase Authentication
+      const userCredential =
+        await signInWithEmailAndPassword(
+          auth,
+          email,
+          password
+        );
 
-      router.push("/dashboard");
+      const user = userCredential.user;
+
+      // Get user information from Firestore
+      const userDoc = await getDoc(
+        doc(db, "users", user.uid)
+      );
+
+      if (!userDoc.exists()) {
+        setError("User profile not found.");
+        return;
+      }
+
+      const userData = userDoc.data();
+
+      // Check role
+      if (userData.role === "admin") {
+        router.push("/admin");
+      } else {
+        router.push("/dashboard");
+      }
     } catch (error: any) {
       console.error(error);
 
-      setError("Invalid email or password.");
+      if (
+        error.code === "auth/invalid-credential" ||
+        error.code === "auth/wrong-password" ||
+        error.code === "auth/user-not-found"
+      ) {
+        setError("Invalid email or password.");
+      } else {
+        setError("Login failed. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -43,7 +77,10 @@ export default function LoginPage() {
           Login to your account
         </p>
 
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form
+          onSubmit={handleLogin}
+          className="space-y-4"
+        >
           <div>
             <label className="mb-1 block text-sm font-medium">
               Email
@@ -55,7 +92,7 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter your email"
               required
-              className="w-full rounded-lg border p-3 outline-none focus:ring-2"
+              className="w-full rounded-lg border p-3"
             />
           </div>
 
@@ -70,7 +107,7 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
               required
-              className="w-full rounded-lg border p-3 outline-none focus:ring-2"
+              className="w-full rounded-lg border p-3"
             />
           </div>
 
