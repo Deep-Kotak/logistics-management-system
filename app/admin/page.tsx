@@ -358,7 +358,16 @@ export default function AdminDashboard() {
 
                       {/* Delete */}
                       <td className="px-4 py-3">
-
+                        <button
+  onClick={() =>
+    router.push(
+      `/admin/shipments/create?orderId=${order.id}`
+    )
+  }
+  className="rounded-lg bg-blue-500 px-3 py-2 text-sm text-white hover:bg-blue-600"
+>
+  Create Shipment
+</button>
                         <button
                           onClick={() =>
                             handleDeleteOrder(order.id)
@@ -367,6 +376,7 @@ export default function AdminDashboard() {
                         >
                           Delete
                         </button>
+                        
 
                       </td>
 
