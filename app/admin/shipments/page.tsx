@@ -1,16 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import {
   collection,
   getDocs,
   query,
   orderBy,
   updateDoc,
+  deleteDoc,
   doc,
 } from "firebase/firestore";
+
 import { db } from "@/lib/firebase";
+
 import { useRouter } from "next/navigation";
+
+// ==========================================
+// TYPES
+// ==========================================
 
 type Shipment = {
   id: string;
@@ -42,6 +50,10 @@ type Driver = {
   status: string;
 };
 
+// ==========================================
+// SHIPMENT STATUSES
+// ==========================================
+
 const shipmentStatuses = [
   "Pending",
   "Picked Up",
@@ -50,22 +62,24 @@ const shipmentStatuses = [
   "Delivered",
 ];
 
+// ==========================================
+// PAGE
+// ==========================================
+
 export default function ShipmentsPage() {
   const router = useRouter();
 
-  const [shipments, setShipments] = useState<Shipment[]>(
-    []
-  );
+  const [shipments, setShipments] =
+    useState<Shipment[]>([]);
 
-  const [vehicles, setVehicles] = useState<Vehicle[]>(
-    []
-  );
+  const [vehicles, setVehicles] =
+    useState<Vehicle[]>([]);
 
-  const [drivers, setDrivers] = useState<Driver[]>(
-    []
-  );
+  const [drivers, setDrivers] =
+    useState<Driver[]>([]);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] =
+    useState(true);
 
   // ==========================================
   // FETCH SHIPMENTS
@@ -79,34 +93,44 @@ export default function ShipmentsPage() {
           orderBy("createdAt", "desc")
         );
 
-        const snapshot = await getDocs(
-          shipmentsQuery
-        );
+        const snapshot =
+          await getDocs(shipmentsQuery);
 
         const shipmentData: Shipment[] =
           snapshot.docs.map((shipmentDoc) => {
-            const data = shipmentDoc.data();
+            const data =
+              shipmentDoc.data();
 
             return {
               id: shipmentDoc.id,
+
               shipmentNumber:
                 data.shipmentNumber || "",
-              orderId: data.orderId || "",
+
+              orderId:
+                data.orderId || "",
+
               customerName:
                 data.customerName || "",
-              source: data.source || "",
+
+              source:
+                data.source || "",
+
               destination:
                 data.destination || "",
+
               status:
                 data.status || "Pending",
 
               vehicleId:
                 data.vehicleId || "",
+
               vehicleNumber:
                 data.vehicleNumber || "",
 
               driverId:
                 data.driverId || "",
+
               driverName:
                 data.driverName || "",
             };
@@ -133,7 +157,10 @@ export default function ShipmentsPage() {
   useEffect(() => {
     const fetchResources = async () => {
       try {
-        // Fetch Vehicles
+        // ====================================
+        // FETCH VEHICLES
+        // ====================================
+
         const vehiclesSnapshot =
           await getDocs(
             collection(db, "vehicles")
@@ -162,7 +189,10 @@ export default function ShipmentsPage() {
 
         setVehicles(vehicleData);
 
-        // Fetch Drivers
+        // ====================================
+        // FETCH DRIVERS
+        // ====================================
+
         const driversSnapshot =
           await getDocs(
             collection(db, "drivers")
@@ -210,31 +240,77 @@ export default function ShipmentsPage() {
     newStatus: string
   ) => {
     try {
+      // Find selected shipment
+      const shipment = shipments.find(
+        (item) =>
+          item.id === shipmentId
+      );
+
+      if (!shipment) {
+        alert("Shipment not found.");
+        return;
+      }
+
+      // ====================================
+      // UPDATE SHIPMENT STATUS
+      // ====================================
+
       await updateDoc(
-        doc(db, "shipments", shipmentId),
+        doc(
+          db,
+          "shipments",
+          shipmentId
+        ),
         {
           status: newStatus,
         }
       );
 
-      setShipments((currentShipments) =>
-        currentShipments.map((shipment) =>
-          shipment.id === shipmentId
-            ? {
-                ...shipment,
-                status: newStatus,
-              }
-            : shipment
-        )
+      // ====================================
+      // UPDATE RELATED ORDER STATUS
+      // ====================================
+
+      if (shipment.orderId) {
+        await updateDoc(
+          doc(
+            db,
+            "orders",
+            shipment.orderId
+          ),
+          {
+            status: newStatus,
+          }
+        );
+      }
+
+      // ====================================
+      // UPDATE LOCAL SHIPMENT STATE
+      // ====================================
+
+      setShipments(
+        (currentShipments) =>
+          currentShipments.map(
+            (item) =>
+              item.id === shipmentId
+                ? {
+                    ...item,
+                    status: newStatus,
+                  }
+                : item
+          )
+      );
+
+      alert(
+        `Status updated to ${newStatus}`
       );
     } catch (error) {
       console.error(
-        "Error updating shipment status:",
+        "Error updating status:",
         error
       );
 
       alert(
-        "Failed to update shipment status."
+        "Failed to update status."
       );
     }
   };
@@ -258,9 +334,16 @@ export default function ShipmentsPage() {
         return;
       }
 
-      // Update shipment
+      // ====================================
+      // UPDATE SHIPMENT
+      // ====================================
+
       await updateDoc(
-        doc(db, "shipments", shipmentId),
+        doc(
+          db,
+          "shipments",
+          shipmentId
+        ),
         {
           vehicleId:
             selectedVehicle.id,
@@ -270,7 +353,10 @@ export default function ShipmentsPage() {
         }
       );
 
-      // Update vehicle status
+      // ====================================
+      // UPDATE VEHICLE STATUS
+      // ====================================
+
       await updateDoc(
         doc(
           db,
@@ -282,34 +368,44 @@ export default function ShipmentsPage() {
         }
       );
 
-      // Update local shipment
-      setShipments((currentShipments) =>
-        currentShipments.map((shipment) =>
-          shipment.id === shipmentId
-            ? {
-                ...shipment,
+      // ====================================
+      // UPDATE LOCAL SHIPMENT
+      // ====================================
 
-                vehicleId:
-                  selectedVehicle.id,
+      setShipments(
+        (currentShipments) =>
+          currentShipments.map(
+            (shipment) =>
+              shipment.id === shipmentId
+                ? {
+                    ...shipment,
 
-                vehicleNumber:
-                  selectedVehicle.vehicleNumber,
-              }
-            : shipment
-        )
+                    vehicleId:
+                      selectedVehicle.id,
+
+                    vehicleNumber:
+                      selectedVehicle.vehicleNumber,
+                  }
+                : shipment
+          )
       );
 
-      // Update local vehicle
-      setVehicles((currentVehicles) =>
-        currentVehicles.map((vehicle) =>
-          vehicle.id ===
-          selectedVehicle.id
-            ? {
-                ...vehicle,
-                status: "Assigned",
-              }
-            : vehicle
-        )
+      // ====================================
+      // UPDATE LOCAL VEHICLE
+      // ====================================
+
+      setVehicles(
+        (currentVehicles) =>
+          currentVehicles.map(
+            (vehicle) =>
+              vehicle.id ===
+              selectedVehicle.id
+                ? {
+                    ...vehicle,
+                    status: "Assigned",
+                  }
+                : vehicle
+          )
       );
 
       alert(
@@ -346,9 +442,16 @@ export default function ShipmentsPage() {
         return;
       }
 
-      // Update shipment
+      // ====================================
+      // UPDATE SHIPMENT
+      // ====================================
+
       await updateDoc(
-        doc(db, "shipments", shipmentId),
+        doc(
+          db,
+          "shipments",
+          shipmentId
+        ),
         {
           driverId:
             selectedDriver.id,
@@ -358,7 +461,10 @@ export default function ShipmentsPage() {
         }
       );
 
-      // Update driver status
+      // ====================================
+      // UPDATE DRIVER STATUS
+      // ====================================
+
       await updateDoc(
         doc(
           db,
@@ -370,34 +476,44 @@ export default function ShipmentsPage() {
         }
       );
 
-      // Update local shipment
-      setShipments((currentShipments) =>
-        currentShipments.map((shipment) =>
-          shipment.id === shipmentId
-            ? {
-                ...shipment,
+      // ====================================
+      // UPDATE LOCAL SHIPMENT
+      // ====================================
 
-                driverId:
-                  selectedDriver.id,
+      setShipments(
+        (currentShipments) =>
+          currentShipments.map(
+            (shipment) =>
+              shipment.id === shipmentId
+                ? {
+                    ...shipment,
 
-                driverName:
-                  selectedDriver.name,
-              }
-            : shipment
-        )
+                    driverId:
+                      selectedDriver.id,
+
+                    driverName:
+                      selectedDriver.name,
+                  }
+                : shipment
+          )
       );
 
-      // Update local driver
-      setDrivers((currentDrivers) =>
-        currentDrivers.map((driver) =>
-          driver.id ===
-          selectedDriver.id
-            ? {
-                ...driver,
-                status: "Assigned",
-              }
-            : driver
-        )
+      // ====================================
+      // UPDATE LOCAL DRIVER
+      // ====================================
+
+      setDrivers(
+        (currentDrivers) =>
+          currentDrivers.map(
+            (driver) =>
+              driver.id ===
+              selectedDriver.id
+                ? {
+                    ...driver,
+                    status: "Assigned",
+                  }
+                : driver
+          )
       );
 
       alert(
@@ -416,20 +532,172 @@ export default function ShipmentsPage() {
   };
 
   // ==========================================
+  // DELETE SHIPMENT
+  // ==========================================
+
+  const handleDeleteShipment = async (
+    shipmentId: string
+  ) => {
+    const confirmed =
+      window.confirm(
+        "Are you sure you want to delete this shipment?"
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      // ====================================
+      // FIND SHIPMENT
+      // ====================================
+
+      const shipment =
+        shipments.find(
+          (item) =>
+            item.id === shipmentId
+        );
+
+      // ====================================
+      // DELETE SHIPMENT
+      // ====================================
+
+      await deleteDoc(
+        doc(
+          db,
+          "shipments",
+          shipmentId
+        )
+      );
+
+      // ====================================
+      // UPDATE RELATED VEHICLE
+      // ====================================
+
+      if (shipment?.vehicleId) {
+        try {
+          await updateDoc(
+            doc(
+              db,
+              "vehicles",
+              shipment.vehicleId
+            ),
+            {
+              status: "Available",
+            }
+          );
+
+          setVehicles(
+            (currentVehicles) =>
+              currentVehicles.map(
+                (vehicle) =>
+                  vehicle.id ===
+                  shipment.vehicleId
+                    ? {
+                        ...vehicle,
+                        status:
+                          "Available",
+                      }
+                    : vehicle
+              )
+          );
+        } catch (vehicleError) {
+          console.error(
+            "Vehicle status update error:",
+            vehicleError
+          );
+        }
+      }
+
+      // ====================================
+      // UPDATE RELATED DRIVER
+      // ====================================
+
+      if (shipment?.driverId) {
+        try {
+          await updateDoc(
+            doc(
+              db,
+              "drivers",
+              shipment.driverId
+            ),
+            {
+              status: "Available",
+            }
+          );
+
+          setDrivers(
+            (currentDrivers) =>
+              currentDrivers.map(
+                (driver) =>
+                  driver.id ===
+                  shipment.driverId
+                    ? {
+                        ...driver,
+                        status:
+                          "Available",
+                      }
+                    : driver
+              )
+          );
+        } catch (driverError) {
+          console.error(
+            "Driver status update error:",
+            driverError
+          );
+        }
+      }
+
+      // ====================================
+      // REMOVE FROM LOCAL STATE
+      // ====================================
+
+      setShipments(
+        (currentShipments) =>
+          currentShipments.filter(
+            (shipment) =>
+              shipment.id !==
+              shipmentId
+          )
+      );
+
+      alert(
+        "Shipment deleted successfully."
+      );
+    } catch (error) {
+      console.error(
+        "Error deleting shipment:",
+        error
+      );
+
+      alert(
+        "Failed to delete shipment."
+      );
+    }
+  };
+
+  // ==========================================
   // UI
   // ==========================================
 
   return (
     <main className="min-h-screen bg-gray-100 p-6">
+
       <div className="mx-auto max-w-7xl">
 
+        {/* ================================= */}
         {/* HEADER */}
+        {/* ================================= */}
+
         <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 
           <div>
+
             <button
               onClick={() =>
-                router.push("/admin")
+                router.push(
+                  "/admin"
+                )
               }
               className="text-sm text-gray-500 hover:underline"
             >
@@ -443,6 +711,7 @@ export default function ShipmentsPage() {
             <p className="mt-1 text-gray-500">
               Manage and track shipments
             </p>
+
           </div>
 
           <button
@@ -458,7 +727,9 @@ export default function ShipmentsPage() {
 
         </header>
 
+        {/* ================================= */}
         {/* STATISTICS */}
+        {/* ================================= */}
 
         <section className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
 
@@ -502,7 +773,9 @@ export default function ShipmentsPage() {
 
         </section>
 
+        {/* ================================= */}
         {/* SHIPMENT TABLE */}
+        {/* ================================= */}
 
         <section className="mt-8 rounded-xl bg-white p-6 shadow">
 
@@ -519,17 +792,22 @@ export default function ShipmentsPage() {
           </div>
 
           {loading ? (
+
             <p className="mt-6 text-gray-500">
               Loading shipments...
             </p>
+
           ) : shipments.length === 0 ? (
+
             <p className="mt-6 text-gray-500">
               No shipments available.
             </p>
+
           ) : (
+
             <div className="mt-6 overflow-x-auto">
 
-              <table className="w-full min-w-[1200px] text-left">
+              <table className="w-full min-w-[1400px] text-left">
 
                 <thead>
 
@@ -561,6 +839,10 @@ export default function ShipmentsPage() {
 
                     <th className="px-4 py-3">
                       Status
+                    </th>
+
+                    <th className="px-4 py-3">
+                      Actions
                     </th>
 
                   </tr>
@@ -752,6 +1034,38 @@ export default function ShipmentsPage() {
 
                         </td>
 
+                        {/* Actions */}
+
+                        <td className="px-4 py-3">
+
+                          <div className="flex gap-2">
+
+                            <button
+                              onClick={() =>
+                                router.push(
+                                  `/admin/shipments/${shipment.id}`
+                                )
+                              }
+                              className="rounded-lg bg-black px-4 py-2 text-sm text-white hover:bg-gray-800"
+                            >
+                              View Details
+                            </button>
+
+                            <button
+                              onClick={() =>
+                                handleDeleteShipment(
+                                  shipment.id
+                                )
+                              }
+                              className="rounded-lg bg-red-500 px-4 py-2 text-sm text-white hover:bg-red-600"
+                            >
+                              Delete
+                            </button>
+
+                          </div>
+
+                        </td>
+
                       </tr>
 
                     )
@@ -762,11 +1076,13 @@ export default function ShipmentsPage() {
               </table>
 
             </div>
+
           )}
 
         </section>
 
       </div>
+
     </main>
   );
 }
