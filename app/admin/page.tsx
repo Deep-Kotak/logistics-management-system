@@ -155,6 +155,38 @@ export default function AdminDashboard() {
               + Create Order
             </button>
 
+            <div className="flex flex-wrap gap-3">
+
+  {/* Create Order */}
+  <button
+    onClick={() =>
+      router.push("/admin/orders/create")
+    }
+    className="rounded-lg bg-black px-5 py-2 text-white hover:bg-gray-800"
+  >
+    + Create Order
+  </button>
+
+  {/* Shipments */}
+  <button
+    onClick={() =>
+      router.push("/admin/shipments")
+    }
+    className="rounded-lg bg-blue-600 px-5 py-2 text-white hover:bg-blue-700"
+  >
+    Shipments
+  </button>
+
+  {/* Logout */}
+  <button
+    onClick={handleLogout}
+    className="rounded-lg bg-red-500 px-5 py-2 text-white hover:bg-red-600"
+  >
+    Logout
+  </button>
+
+</div>
+
             {/* Logout */}
             <button
               onClick={handleLogout}

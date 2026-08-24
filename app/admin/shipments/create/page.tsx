@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
 import {
   addDoc,
@@ -17,23 +17,20 @@ import {
   useSearchParams,
 } from "next/navigation";
 
-export default function CreateShipmentPage() {
+function CreateShipmentForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const orderId = searchParams.get("orderId");
 
-  // Form states
   const [shipmentNumber, setShipmentNumber] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [source, setSource] = useState("");
   const [destination, setDestination] = useState("");
 
-  // Loading states
   const [loadingOrder, setLoadingOrder] = useState(true);
   const [loading, setLoading] = useState(false);
 
-  // Error
   const [error, setError] = useState("");
 
   // Fetch existing order
@@ -45,18 +42,23 @@ export default function CreateShipmentPage() {
       }
 
       try {
-        const orderRef = doc(db, "orders", orderId);
+        const orderRef = doc(
+          db,
+          "orders",
+          orderId
+        );
 
-        const orderSnapshot = await getDoc(orderRef);
+        const orderSnapshot =
+          await getDoc(orderRef);
 
         if (!orderSnapshot.exists()) {
           setError("Order not found.");
           return;
         }
 
-        const orderData = orderSnapshot.data();
+        const orderData =
+          orderSnapshot.data();
 
-        // Automatically fill form
         setCustomerName(
           orderData.customerName || ""
         );
@@ -150,7 +152,6 @@ export default function CreateShipmentPage() {
           Create a shipment for an order
         </p>
 
-        {/* Form Card */}
         <div className="mt-6 rounded-xl bg-white p-6 shadow">
 
           {loadingOrder ? (
@@ -249,5 +250,21 @@ export default function CreateShipmentPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function CreateShipmentPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center bg-gray-100">
+          <p className="text-gray-500">
+            Loading shipment page...
+          </p>
+        </main>
+      }
+    >
+      <CreateShipmentForm />
+    </Suspense>
   );
 }
