@@ -21,44 +21,105 @@ function CreateShipmentForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const orderId = searchParams.get("orderId");
+  const [orderId, setOrderId] = useState("");
 
-  const [shipmentNumber, setShipmentNumber] = useState("");
-  const [customerName, setCustomerName] = useState("");
-  const [source, setSource] = useState("");
-  const [destination, setDestination] = useState("");
+  const [shipmentNumber, setShipmentNumber] =
+    useState("");
 
-  const [loadingOrder, setLoadingOrder] = useState(true);
-  const [loading, setLoading] = useState(false);
+  const [customerName, setCustomerName] =
+    useState("");
 
-  const [error, setError] = useState("");
+  const [source, setSource] =
+    useState("");
 
-  // Fetch existing order
+  const [destination, setDestination] =
+    useState("");
+
+  const [userId, setUserId] =
+    useState("");
+
+  const [loadingOrder, setLoadingOrder] =
+    useState(true);
+
+  const [loading, setLoading] =
+    useState(false);
+
+  const [error, setError] =
+    useState("");
+
+  // ==========================================
+  // FETCH ORDER
+  // ==========================================
+
   useEffect(() => {
     const fetchOrder = async () => {
-      if (!orderId) {
-        setLoadingOrder(false);
-        return;
-      }
-
       try {
+        const parameter =
+          searchParams.get("orderId");
+
+        console.log(
+          "Order ID from URL:",
+          parameter
+        );
+
+        if (!parameter) {
+          setError(
+            "Order ID is missing from the URL."
+          );
+
+          return;
+        }
+
+        const cleanOrderId =
+          decodeURIComponent(
+            parameter
+          ).trim();
+
+        console.log(
+          "Clean Order ID:",
+          cleanOrderId
+        );
+
+        setOrderId(cleanOrderId);
+
+        // Get order document
         const orderRef = doc(
           db,
           "orders",
-          orderId
+          cleanOrderId
+        );
+
+        console.log(
+          "Looking for:",
+          `orders/${cleanOrderId}`
         );
 
         const orderSnapshot =
           await getDoc(orderRef);
 
+        console.log(
+          "Document exists:",
+          orderSnapshot.exists()
+        );
+
         if (!orderSnapshot.exists()) {
-          setError("Order not found.");
+          setError(
+            `Order not found: ${cleanOrderId}`
+          );
+
           return;
         }
 
+        // Get order data ONLY ONCE
         const orderData =
           orderSnapshot.data();
 
+        console.log(
+          "FOUND ORDER:",
+          orderData
+        );
+
+        // Set order information
         setCustomerName(
           orderData.customerName || ""
         );
@@ -70,6 +131,11 @@ function CreateShipmentForm() {
         setDestination(
           orderData.destination || ""
         );
+
+        setUserId(
+          orderData.userId || ""
+        );
+
       } catch (error) {
         console.error(
           "Error fetching order:",
@@ -85,15 +151,27 @@ function CreateShipmentForm() {
     };
 
     fetchOrder();
-  }, [orderId]);
+  }, [searchParams]);
 
-  // Create shipment
+  // ==========================================
+  // CREATE SHIPMENT
+  // ==========================================
+
   const handleSubmit = async (
     e: React.FormEvent
   ) => {
     e.preventDefault();
 
     setError("");
+
+    if (!orderId) {
+      setError(
+        "Order ID is missing."
+      );
+
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -101,12 +179,29 @@ function CreateShipmentForm() {
         collection(db, "shipments"),
         {
           shipmentNumber,
-          orderId: orderId || "",
+
+          orderId,
+
+          userId,
+
           customerName,
+
           source,
+
           destination,
+
           status: "Pending",
-          createdAt: serverTimestamp(),
+
+          vehicleId: "",
+
+          vehicleNumber: "",
+
+          driverId: "",
+
+          driverName: "",
+
+          createdAt:
+            serverTimestamp(),
         }
       );
 
@@ -114,7 +209,10 @@ function CreateShipmentForm() {
         "Shipment created successfully!"
       );
 
-      router.push("/admin");
+      router.push(
+        "/admin/shipments"
+      );
+
     } catch (error) {
       console.error(
         "Create shipment error:",
@@ -124,26 +222,36 @@ function CreateShipmentForm() {
       setError(
         "Failed to create shipment."
       );
+
     } finally {
       setLoading(false);
     }
   };
 
+  // ==========================================
+  // UI
+  // ==========================================
+
   return (
     <main className="min-h-screen bg-gray-100 p-6">
+
       <div className="mx-auto max-w-3xl">
 
-        {/* Back Button */}
+        {/* Back */}
+
         <button
           onClick={() =>
-            router.push("/admin")
+            router.push(
+              "/admin/shipments"
+            )
           }
           className="text-sm text-gray-600 hover:underline"
         >
-          ← Back to Dashboard
+          ← Back to Shipments
         </button>
 
         {/* Heading */}
+
         <h1 className="mt-4 text-3xl font-bold">
           Create Shipment
         </h1>
@@ -155,16 +263,60 @@ function CreateShipmentForm() {
         <div className="mt-6 rounded-xl bg-white p-6 shadow">
 
           {loadingOrder ? (
-            <p className="text-gray-500">
-              Loading order information...
-            </p>
+
+            <div className="py-8 text-center">
+
+              <p className="text-gray-500">
+                Loading order information...
+              </p>
+
+            </div>
+
+          ) : error ? (
+
+            <div className="rounded-lg bg-red-50 p-4">
+
+              <p className="text-sm text-red-600">
+                {error}
+              </p>
+
+              <button
+                onClick={() =>
+                  router.push(
+                    "/admin/orders"
+                  )
+                }
+                className="mt-4 rounded-lg bg-black px-4 py-2 text-sm text-white"
+              >
+                Back to Orders
+              </button>
+
+            </div>
+
           ) : (
+
             <form
               onSubmit={handleSubmit}
               className="space-y-5"
             >
 
+              {/* Order ID */}
+
+              <div>
+                <label className="mb-1 block text-sm font-medium">
+                  Order ID
+                </label>
+
+                <input
+                  type="text"
+                  value={orderId}
+                  readOnly
+                  className="w-full rounded-lg border bg-gray-100 p-3 text-gray-600"
+                />
+              </div>
+
               {/* Shipment Number */}
+
               <div>
                 <label className="mb-1 block text-sm font-medium">
                   Shipment Number
@@ -185,6 +337,7 @@ function CreateShipmentForm() {
               </div>
 
               {/* Customer */}
+
               <div>
                 <label className="mb-1 block text-sm font-medium">
                   Customer Name
@@ -199,6 +352,7 @@ function CreateShipmentForm() {
               </div>
 
               {/* Source */}
+
               <div>
                 <label className="mb-1 block text-sm font-medium">
                   Source
@@ -213,6 +367,7 @@ function CreateShipmentForm() {
               </div>
 
               {/* Destination */}
+
               <div>
                 <label className="mb-1 block text-sm font-medium">
                   Destination
@@ -227,6 +382,7 @@ function CreateShipmentForm() {
               </div>
 
               {/* Error */}
+
               {error && (
                 <p className="text-sm text-red-500">
                   {error}
@@ -234,6 +390,7 @@ function CreateShipmentForm() {
               )}
 
               {/* Submit */}
+
               <button
                 type="submit"
                 disabled={loading}
@@ -245,6 +402,7 @@ function CreateShipmentForm() {
               </button>
 
             </form>
+
           )}
 
         </div>
@@ -252,6 +410,10 @@ function CreateShipmentForm() {
     </main>
   );
 }
+
+// ==========================================
+// SUSPENSE
+// ==========================================
 
 export default function CreateShipmentPage() {
   return (

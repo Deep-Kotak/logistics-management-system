@@ -145,15 +145,7 @@ export default function AdminDashboard() {
 
           <div className="flex flex-wrap gap-3">
 
-            {/* Create Order */}
-            <button
-              onClick={() =>
-                router.push("/admin/orders/create")
-              }
-              className="rounded-lg bg-black px-5 py-2 text-white hover:bg-gray-800"
-            >
-              + Create Order
-            </button>
+
 
             <div className="flex flex-wrap gap-3">
 
@@ -177,13 +169,7 @@ export default function AdminDashboard() {
     Shipments
   </button>
 
-  {/* Logout */}
-  <button
-    onClick={handleLogout}
-    className="rounded-lg bg-red-500 px-5 py-2 text-white hover:bg-red-600"
-  >
-    Logout
-  </button>
+ 
 
 </div>
 

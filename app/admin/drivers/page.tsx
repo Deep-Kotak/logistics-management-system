@@ -13,52 +13,52 @@ import {
 import { db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 
-type Vehicle = {
+type Driver = {
   id: string;
-  vehicleNumber: string;
-  vehicleType: string;
-  capacity: number;
+  name: string;
+  phone: string;
+  licenseNumber: string;
   status: string;
 };
 
-export default function VehiclesPage() {
+export default function DriversPage() {
   const router = useRouter();
 
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch vehicles
+  // Fetch drivers
   useEffect(() => {
-    const fetchVehicles = async () => {
+    const fetchDrivers = async () => {
       try {
-        const vehiclesQuery = query(
-          collection(db, "vehicles"),
+        const driversQuery = query(
+          collection(db, "drivers"),
           orderBy("createdAt", "desc")
         );
 
-        const snapshot = await getDocs(vehiclesQuery);
+        const snapshot = await getDocs(
+          driversQuery
+        );
 
-        const vehicleData: Vehicle[] =
-          snapshot.docs.map((vehicleDoc) => {
-            const data = vehicleDoc.data();
+        const driverData: Driver[] =
+          snapshot.docs.map((driverDoc) => {
+            const data = driverDoc.data();
 
             return {
-              id: vehicleDoc.id,
-              vehicleNumber:
-                data.vehicleNumber || "",
-              vehicleType:
-                data.vehicleType || "",
-              capacity:
-                data.capacity || 0,
+              id: driverDoc.id,
+              name: data.name || "",
+              phone: data.phone || "",
+              licenseNumber:
+                data.licenseNumber || "",
               status:
                 data.status || "Available",
             };
           });
 
-        setVehicles(vehicleData);
+        setDrivers(driverData);
       } catch (error) {
         console.error(
-          "Error fetching vehicles:",
+          "Error fetching drivers:",
           error
         );
       } finally {
@@ -66,50 +66,50 @@ export default function VehiclesPage() {
       }
     };
 
-    fetchVehicles();
+    fetchDrivers();
   }, []);
 
-  // Update vehicle status
+  // Update driver status
   const handleStatusChange = async (
-    vehicleId: string,
+    driverId: string,
     newStatus: string
   ) => {
     try {
       await updateDoc(
-        doc(db, "vehicles", vehicleId),
+        doc(db, "drivers", driverId),
         {
           status: newStatus,
         }
       );
 
-      setVehicles((currentVehicles) =>
-        currentVehicles.map((vehicle) =>
-          vehicle.id === vehicleId
+      setDrivers((currentDrivers) =>
+        currentDrivers.map((driver) =>
+          driver.id === driverId
             ? {
-                ...vehicle,
+                ...driver,
                 status: newStatus,
               }
-            : vehicle
+            : driver
         )
       );
     } catch (error) {
       console.error(
-        "Error updating vehicle status:",
+        "Error updating driver status:",
         error
       );
 
       alert(
-        "Failed to update vehicle status."
+        "Failed to update driver status."
       );
     }
   };
 
-  // Delete vehicle
-  const handleDeleteVehicle = async (
-    vehicleId: string
+  // Delete driver
+  const handleDeleteDriver = async (
+    driverId: string
   ) => {
     const confirmed = window.confirm(
-      "Are you sure you want to delete this vehicle?"
+      "Are you sure you want to delete this driver?"
     );
 
     if (!confirmed) {
@@ -118,22 +118,22 @@ export default function VehiclesPage() {
 
     try {
       await deleteDoc(
-        doc(db, "vehicles", vehicleId)
+        doc(db, "drivers", driverId)
       );
 
-      setVehicles((currentVehicles) =>
-        currentVehicles.filter(
-          (vehicle) =>
-            vehicle.id !== vehicleId
+      setDrivers((currentDrivers) =>
+        currentDrivers.filter(
+          (driver) =>
+            driver.id !== driverId
         )
       );
     } catch (error) {
       console.error(
-        "Error deleting vehicle:",
+        "Error deleting driver:",
         error
       );
 
-      alert("Failed to delete vehicle.");
+      alert("Failed to delete driver.");
     }
   };
 
@@ -155,23 +155,23 @@ export default function VehiclesPage() {
             </button>
 
             <h1 className="mt-2 text-3xl font-bold">
-              Vehicle Management
+              Driver Management
             </h1>
 
             <p className="mt-1 text-gray-500">
-              Manage logistics vehicles
+              Manage delivery drivers
             </p>
           </div>
 
           <button
             onClick={() =>
               router.push(
-                "/admin/vehicles/create"
+                "/admin/drivers/create"
               )
             }
             className="rounded-lg bg-black px-5 py-2 text-white hover:bg-gray-800"
           >
-            + Add Vehicle
+            + Add Driver
           </button>
 
         </header>
@@ -180,16 +180,16 @@ export default function VehiclesPage() {
         <section className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
 
           <StatusCard
-            title="Total Vehicles"
-            value={vehicles.length}
+            title="Total Drivers"
+            value={drivers.length}
           />
 
           <StatusCard
             title="Available"
             value={
-              vehicles.filter(
-                (vehicle) =>
-                  vehicle.status ===
+              drivers.filter(
+                (driver) =>
+                  driver.status ===
                   "Available"
               ).length
             }
@@ -198,70 +198,69 @@ export default function VehiclesPage() {
           <StatusCard
             title="Assigned"
             value={
-              vehicles.filter(
-                (vehicle) =>
-                  vehicle.status ===
+              drivers.filter(
+                (driver) =>
+                  driver.status ===
                   "Assigned"
               ).length
             }
           />
 
           <StatusCard
-            title="Maintenance"
+            title="On Duty"
             value={
-              vehicles.filter(
-                (vehicle) =>
-                  vehicle.status ===
-                  "Maintenance"
+              drivers.filter(
+                (driver) =>
+                  driver.status ===
+                  "On Duty"
               ).length
             }
           />
 
         </section>
 
-        {/* Vehicle List */}
+        {/* Driver List */}
         <section className="mt-8 rounded-xl bg-white p-6 shadow">
 
           <div className="flex items-center justify-between">
 
             <div>
               <h2 className="text-xl font-semibold">
-                All Vehicles
+                All Drivers
               </h2>
 
               <p className="mt-1 text-sm text-gray-500">
-                Manage your fleet
+                Manage your delivery drivers
               </p>
             </div>
 
             <span className="text-sm text-gray-500">
-              {vehicles.length} vehicles
+              {drivers.length} drivers
             </span>
 
           </div>
 
-          {/* Loading */}
           {loading ? (
             <p className="mt-6 text-gray-500">
-              Loading vehicles...
+              Loading drivers...
             </p>
-          ) : vehicles.length === 0 ? (
+          ) : drivers.length === 0 ? (
 
             <div className="mt-6 rounded-lg border border-dashed p-8 text-center">
 
               <p className="text-gray-500">
-                No vehicles available.
+                No drivers available.
               </p>
 
               <button
                 onClick={() =>
                   router.push(
-                    "/admin/vehicles/create"
+                    "/admin/drivers/create"
                   )
                 }
                 className="mt-4 rounded-lg bg-black px-5 py-2 text-white"
               >
-                + Add Your First Vehicle
+                + Add Your First Driver
               </button>
 
             </div>
@@ -270,21 +269,21 @@ export default function VehiclesPage() {
 
             <div className="mt-6 overflow-x-auto">
 
-              <table className="w-full min-w-[700px] text-left">
+              <table className="w-full min-w-[800px] text-left">
 
                 <thead>
                   <tr className="border-b bg-gray-50">
 
                     <th className="px-4 py-3 text-sm font-semibold">
-                      Vehicle Number
+                      Name
                     </th>
 
                     <th className="px-4 py-3 text-sm font-semibold">
-                      Type
+                      Phone
                     </th>
 
                     <th className="px-4 py-3 text-sm font-semibold">
-                      Capacity
+                      License Number
                     </th>
 
                     <th className="px-4 py-3 text-sm font-semibold">
@@ -300,37 +299,41 @@ export default function VehiclesPage() {
 
                 <tbody>
 
-                  {vehicles.map(
-                    (vehicle) => (
+                  {drivers.map(
+                    (driver) => (
 
                       <tr
-                        key={vehicle.id}
+                        key={driver.id}
                         className="border-b hover:bg-gray-50"
                       >
 
                         <td className="px-4 py-3 font-medium">
-                          {vehicle.vehicleNumber}
+                          {driver.name}
                         </td>
 
                         <td className="px-4 py-3">
-                          {vehicle.vehicleType}
+                          {driver.phone}
                         </td>
 
                         <td className="px-4 py-3">
-                          {vehicle.capacity} kg
+                          {
+                            driver.licenseNumber
+                          }
                         </td>
 
                         <td className="px-4 py-3">
+
                           <select
-                            value={vehicle.status}
+                            value={driver.status}
                             onChange={(e) =>
                               handleStatusChange(
-                                vehicle.id,
+                                driver.id,
                                 e.target.value
                               )
                             }
                             className="rounded-lg border px-3 py-2 text-sm"
                           >
+
                             <option value="Available">
                               Available
                             </option>
@@ -339,27 +342,31 @@ export default function VehiclesPage() {
                               Assigned
                             </option>
 
-                            <option value="In Transit">
-                              In Transit
+                            <option value="On Duty">
+                              On Duty
                             </option>
 
-                            <option value="Maintenance">
-                              Maintenance
+                            <option value="Inactive">
+                              Inactive
                             </option>
+
                           </select>
+
                         </td>
 
                         <td className="px-4 py-3">
+
                           <button
                             onClick={() =>
-                              handleDeleteVehicle(
-                                vehicle.id
+                              handleDeleteDriver(
+                                driver.id
                               )
                             }
                             className="rounded-lg bg-red-500 px-3 py-2 text-sm text-white hover:bg-red-600"
                           >
                             Delete
                           </button>
+
                         </td>
 
                       </tr>
